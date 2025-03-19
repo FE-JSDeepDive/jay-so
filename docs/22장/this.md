@@ -155,10 +155,289 @@ const me = new Person("Lee");
 
 ### 2. 함수 호출 방식과 this 바인딩
 
+this 바인딩(this에 바인딩될 값)은 함수 호출 방식, 즉 함수가 어떻게 호출되었는지에 따라 동적으로 결정됨
+
+렉시컬 스코프와 this 바인딩은 결정 시기가 다름
+
+- 함수의 상위 스코프를 결정하는 방식인 렉시컬 스코프는 함수 정의가 평가되어 함수 객체가 생성되는 시점에 상위 스코프를 결정함
+- this 바인딩은 함수 호출 시점에 결정됨
+
+주의해야 할 점
+
+- 동일한 함수도 다양한 방식으로 호출할 수 잇음
+
+1. 일반 함수 호출
+2. 메서드 호출
+3. 생성자 함수 호출
+4. Function.prototype.apply/call/bind 메서드에 의한 간접 호출
+
+```javascript
+//this 바인딩은 함수 호출 방식에 따라 동적으로 결정됨
+const foo = functin () {
+  console.dir(this);
+};
+
+//동일한 함수도 다양한 방식으로 호출할 수 있음
+
+//1. 일반 함수 호출
+// foo 함수를 일반적인 방식으로 호출, foo 함수 내부의 this는 전역 객체 window를 가리킴
+foo(); //window
+
+//2. 메서드 호출
+//foo 함수를 프로퍼티 값으로 할당하여 호출, foo 함수 내부의 this는 메서드를 호출한 객체 obj를 가리킴
+const obj = {foo};
+obj.foo(); //obj
+
+//3. 생성자 함수 호출
+// foo 함수를 new 연산자와 함께 생성자 함수로 호출, foo 함수 내부의 this는 생성자 함수가 생성한 인스턴스를 가리킴
+new foo(); //foo {}
+
+//4. Function.prototype.apply/call/bind 메서드에 의한 간접 호출
+//foo 함수 내부의 this는 인수에 의해 결정됨
+const bar = {name: 'bar'};
+
+foo.call(bar); //bar
+foo.apply(bar); //bar
+foo.bind(bar)(); //bar
+```
+
+<br/>
+
 #### 일반 함수 호출
 
-#### 메서드 호출
+기본적으로 this에는 전역 객체가 바인딩됨
 
-#### 생성자 함수 호출
+```javascript
+function foo() {
+  console.log("foo's this: ", this); //window
 
-#### Function.prototype.apply/call/bind메서드에 의한 간접 호출
+  function bar() {
+    console.log("bar's this: ", this); //window
+  }
+  bar();
+}
+foo();
+```
+
+전역 함수, 중첩 함수를 일반 함수로 호출하면 함수 내부의 this에는 전역 객체가 바인딩됨
+
+- this는 객체의 프로퍼티나 메서드를 참조하기 위한 자기 참조 변수임으로 객체를 생성하지 않는 일반 함수에서 this는 의미가 없음
+
+strict mode가 적용된 일반함수
+
+- 내부의 this에는 undefined가 바인딩됨
+
+```javascript
+function foo() {
+  "use strict";
+
+  console.log("foo's this: ", this); //undefined
+
+  function bar() {
+    console.log("bar's this:", this); //undefined
+  }
+  bar();
+}
+foo();
+```
+
+메서드 내에 정의된 중첩 함수도 일반 함수로 호출되면 중첩 함수 내부의 this에는 전역 객체가 바인딩됨
+
+```javascript
+//var 키워드로 선언한 전역 변수 value는 전역 객체의 프로퍼티임
+var value = 1;
+//단, const 키워드로 선언한 전역 변수 value는 전역 객체의 프로퍼티가 아님
+//const value = 1;
+
+const obj = {
+  value: 100,
+  foo() {
+    console.log("foo's this: ", this); //{value: 100, foo: f}
+    console.log("foo's this.value: ", this.value); //100
+
+    //메서드 내에서 정의한 중첩 함수
+    function bar() {
+      console.log("bar's this: ", this); //window
+      console.log("bar's this.value: ", this.value); //1
+    }
+
+    //메서드 내에서 정의한 중첩 함수도 일반 함수로 호출되면 중첩 함수 내부의 this에는 전역 객체가 바인딩됨
+    bar();
+  },
+};
+
+ob.foo();
+```
+
+콜백 함수가 일반 함수로 호출된다면 콜백 함수 내부의 this에도 전역 객체가 바인딩됨
+
+- 어떠한 함수라도 일반 함수로 호출되면 this에 전역 객체가 바인딩됨
+
+```javascript
+var value = 1;
+
+const obj = {
+  value: 100,
+  foo() {
+    console.log("foo's this: ", this); //{value: 100, foo: f}
+    //콜백 함수 내부의 this에는 전역 객체가 바인딩됨
+    setTimeout(function () {
+      console.log("callback's this:", this); //window
+      console.log("callback's this.value: ", this.value); //1
+    }, 100);
+  },
+};
+
+obj.foo();
+```
+
+일반 함수로 호출된 모든 함수(중첩 함수, 콜백 함수 포함) 내부의 this는 전역 객체가 바인딩됨
+
+- 중첩 함수 또는 콜백 함수는 외부 함수를 돕는 헬퍼 함수의 역할을 함으로 외부 함수의 일부 로직을 대신하는 경우가 대부분임
+
+메서드 내부의 중첩 함수나 콜백 함수의 this 바인딩을 메서드의 this 바인딩과 일치시키기 위한 방법
+
+```javascript
+var value = 1;
+
+const obj = {
+  value: 100,
+  foo() {
+    //this 바인딩(obj)을 변수 that에 할당함
+    const that = this;
+
+    //콜백 함수 내부에서 this 대신 that을 참조함
+    setTimeout(function () {
+      console.log(that.value); //100
+    }, 100);
+  },
+};
+
+obj.foo();
+```
+
+위 방법 이외에도 JS는 this를 명시적으로 바인딩할 수 있는 Function.prototype.apply, Function.prototype.call, Function.prototype.bind메서드를 제공함
+
+```javascript
+var value = 1;
+
+const obj = {
+  value: 100,
+  foo() {
+    //콜백함수에 명시적으로 this를 바인딩함
+    setTimeout(
+      function () {
+        console.log(this.value); //100
+      }.bind(this),
+      100
+    );
+  },
+};
+
+obj.foo();
+```
+
+화살표 함수를 이용한 this 바인딩
+
+```javascript
+var value = 1;
+
+const obj = {
+  value: 100,
+  foo() {
+    //화살표 함수 내부의 this는 상위 스코프의 this를 가리킴
+    setTimeout(() => console.log(this.value), 100); //100
+  },
+};
+
+obj.foo();
+```
+
+<br/>
+
+### 모던 자바스크립트 Deep Dive 22장: `this`
+
+#### **메서드 호출**
+
+메서드 내부의 `this`는 메서드를 호출한 객체에 바인딩됩니다. 이는 메서드를 소유한 객체가 아니라, 메서드 이름 앞의 마침표(`.`) 연산자 앞에 기술된 객체를 기준으로 결정됩니다.
+
+```javascript
+const person = {
+  name: "Lee",
+  getName() {
+    // 메서드 내부의 this는 메서드를 호출한 객체에 바인딩된다.
+    return this.name;
+  },
+};
+
+// 메서드 getName을 호출한 객체는 person이다.
+console.log(person.getName()); // Lee
+```
+
+- 위 예제에서 `getName` 메서드는 `person` 객체의 프로퍼티로 정의되었지만, 메서드 호출 시 `this`는 `person` 객체를 참조합니다.
+- 하지만, 메서드를 다른 객체에 할당하거나 일반 함수로 호출하면 `this`는 달라질 수 있습니다.
+
+```javascript
+const anotherPerson = {
+  name: "Kim",
+};
+
+anotherPerson.getName = person.getName;
+
+// getName 메서드를 호출한 객체는 anotherPerson이다.
+console.log(anotherPerson.getName()); // Kim
+
+const getName = person.getName;
+
+// 일반 함수로 호출된 경우, this는 전역 객체를 참조한다.
+console.log(getName()); // Node.js 환경에서는 undefined, 브라우저에서는 ''
+```
+
+#### **생성자 함수 호출**
+
+생성자 함수 내부의 `this`는 새로 생성된 객체를 가리킵니다. 생성자 함수는 주로 객체를 초기화하는 데 사용되며, `new` 키워드와 함께 호출됩니다.
+
+```javascript
+function Person(name) {
+  this.name = name;
+}
+
+const alice = new Person("Alice");
+console.log(alice.name); // Alice
+```
+
+- 생성자 함수 호출 시, `this`는 자동으로 새로 생성된 객체에 바인딩됩니다.
+
+#### **Function.prototype.apply/call/bind 메서드에 의한 간접 호출**
+
+`apply`, `call`, `bind` 메서드는 함수 호출 시 `this`를 명시적으로 설정할 수 있습니다.
+
+1. **apply**
+
+   - 첫 번째 인자로 `this`를 설정하고, 두 번째 인자로 배열 형태의 인수를 전달합니다.
+
+   ```javascript
+   function greet(greeting) {
+     console.log(`${greeting}, ${this.name}`);
+   }
+
+   const person = { name: "Alice" };
+   greet.apply(person, ["Hello"]); // Hello, Alice
+   ```
+
+2. **call**
+
+   - 첫 번째 인자로 `this`를 설정하고, 나머지 인자를 직접 전달합니다.
+
+   ```javascript
+   greet.call(person, "Hi"); // Hi, Alice
+   ```
+
+3. **bind**
+
+   - 새로운 함수를 반환하며, 반환된 함수의 `this`는 고정됩니다.
+
+   ```javascript
+   const boundGreet = greet.bind(person);
+   boundGreet("Hey"); // Hey, Alice
+   ```
